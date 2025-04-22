@@ -1,4 +1,8 @@
 
 
 DOMAIN = "evopell"
+CONF_EVOPELL_USER = "evopell_user"
+CONF_EVOPELL_PASSWORD = "evopell_password"
 DEFAULT_NAME = "evopell"
+DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_PORT = 80
