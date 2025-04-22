@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.core import HomeAssistant
 
 from .const import (
-    UPDATE_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class Evopell(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=name,
-            update_interval=timedelta(seconds=UPDATE_INTERVAL),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
         self._name = name
         self._host = host

@@ -1,5 +1,5 @@
 import logging
-from evopell import Evopell
+from .evopell import Evopell
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _LOGGER.debug("Setup %s.%s", DOMAIN, name)
 
-    evopell = Evopell(hass, name, host, port)
+    evopell = Evopell(hass, name, host, port, scan_interval)
 
     await evopell.async_config_entry_first_refresh()
 
