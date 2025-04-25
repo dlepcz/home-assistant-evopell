@@ -1,0 +1,25 @@
+{
+    "config": {
+      "title": "Defro Evopell",
+      "step": {
+        "user": {
+          "title": "Define your Defro Evopell connection",
+          "data": {
+            "host": "The ip-address of your Evopell",
+            "name": "The prefix to be used for your Evopell sensors",
+            "port": "The TCP port on which to connect to the Evopell",
+            "evopell_user": "The user to be used for connect to Evopell",
+            "evopell_password": "The password to be used for connect to Evopell",
+            "scan_interval": "The Evopell registers polling interval [s]"
+          }
+        }
+      },
+      "error": {
+        "already_configured": "Device is already configured"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    }
+}
+  
