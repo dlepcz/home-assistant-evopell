@@ -10,7 +10,7 @@
             "port": "The TCP port on which to connect to the Evopell",
             "evopell_user": "The user to be used for connect to Evopell",
             "evopell_password": "The password to be used for connect to Evopell",
-            "scan_interval": "The modbus registers polling interval [s]"
+            "scan_interval": "The Evopell registers polling interval [s]"
           }
         }
       },
