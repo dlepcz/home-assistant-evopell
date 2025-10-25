@@ -1,0 +1,25 @@
+{
+    "config": {
+      "title": "Defro Evopell",
+      "step": {
+        "user": {
+          "title": "Połącznie do kotła Evopell",
+          "data": {
+            "host": "Adres IP",
+            "name": "Nazwa",
+            "port": "Port",
+            "evopell_user": "Użytkownik",
+            "evopell_password": "Hasło",
+            "scan_interval": "Częstotliwość odświeżania"
+          }
+        }
+      },
+      "error": {
+        "already_configured": "Kocioł już jest skonfigurowany"
+      },
+      "abort": {
+        "already_configured": "Kocioł już jest skonfigurowany"
+      }
+    }
+}
+  

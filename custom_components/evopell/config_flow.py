@@ -19,6 +19,17 @@ from .const import (
     DEFAULT_PORT,
 )
 
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+        vol.Required(CONF_EVOPELL_USER): str,
+        vol.Required(CONF_EVOPELL_PASSWORD): str,
+        vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+    }
+)
+
 def host_valid(host):
     """Return True if hostname or IP address is valid."""
     try:
@@ -37,7 +48,7 @@ def evopell_entries(hass: HomeAssistant):
 
 class EltermProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def _host_in_configuration_exists(self, host) -> bool:
@@ -61,13 +72,5 @@ class EltermProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
-                vol.Required(CONF_HOST): str,
-                vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-                vol.Required(CONF_EVOPELL_USER): str,
-                vol.Required(CONF_EVOPELL_PASSWORD): str,
-                vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-            })
+            step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
