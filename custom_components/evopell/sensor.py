@@ -94,6 +94,21 @@ async def async_setup_entry(
             )
         )
 
+        if tid == "zaw4d_dir":
+            entities.append(
+                EvopellSensor(
+                    evopell,
+                    SensorEntityDescription(
+                        key=f"{tid}_text",
+                        name=f"{name} (text)",
+                        device_class=None,
+                        native_unit_of_measurement=None,
+                        state_class=None,
+                        icon=icon,
+                    ),
+                )
+            )
+
     async_add_entities(entities)
 
 
@@ -112,8 +127,18 @@ class EvopellSensor(EvopellEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         """Zwraca wartość sensora."""
-        _LOGGER.debug("Native value for senosr %s", self.entity_description.key)
-        return self.coordinator.data.get(self.entity_description.key)
+        tid = self.entity_description.key
+        _LOGGER.debug("Native value for senosr %s", tid)
+        result = self.coordinator.data.get(tid)
+        if tid.endswith("_text"):
+            prefix = tid.removesuffix("_text")
+            if prefix == "zaw4d_dir":
+                result = self.coordinator.data.get(prefix)
+                if result == "1":
+                    result = "Prawo"
+                else:
+                    result = "Lewo"
+        return result
 
     @callback
     def _handle_coordinator_update(self) -> None:
