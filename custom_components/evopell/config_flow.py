@@ -1,22 +1,21 @@
+"""Config flow for Evopell integration."""
 
 import ipaddress
 import re
+
 import voluptuous as vol
+
 from homeassistant import config_entries
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.const import (
-    CONF_NAME,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_SCAN_INTERVAL,
-)
+
 from .const import (
-    DOMAIN,
-    DEFAULT_NAME,
-    CONF_EVOPELL_USER,
     CONF_EVOPELL_PASSWORD,
-    DEFAULT_SCAN_INTERVAL,
+    CONF_EVOPELL_USER,
+    DEFAULT_NAME,
     DEFAULT_PORT,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
 )
 
 DATA_SCHEMA = vol.Schema(
@@ -30,15 +29,17 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
+
 def host_valid(host):
     """Return True if hostname or IP address is valid."""
     try:
-        if ipaddress.ip_address(host).version == (4 or 6):
+        if ipaddress.ip_address(host).version == 4:
             return True
     except ValueError:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
         return all(x and not disallowed.search(x) for x in host.split("."))
-    
+
+
 @callback
 def evopell_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
@@ -46,7 +47,9 @@ def evopell_entries(hass: HomeAssistant):
         entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)
     }
 
+
 class EltermProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Evopell integration."""
 
     VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -55,8 +58,10 @@ class EltermProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if host in evopell_entries(self.hass):
             return True
         return False
-    
+
     async def async_step_user(self, user_input=None):
+        """Config flow for Evopell integration."""
+
         errors = {}
 
         if user_input is not None:
@@ -69,7 +74,9 @@ class EltermProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(user_input[CONF_HOST])
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
+                return self.async_create_entry(
+                    title=user_input[CONF_NAME], data=user_input
+                )
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors

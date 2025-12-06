@@ -1,187 +1,243 @@
+"""Main classes for Evopell integration."""
 
-import logging
-import requests
-import time
-import xml.etree.ElementTree as ET
-from itertools import islice
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional, List, Dict
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.const import CONF_NAME
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-from homeassistant.core import HomeAssistant
+from itertools import islice
+import logging
+from typing import Any
 
-from .const import (
-    DEFAULT_SCAN_INTERVAL,
-)
+from aiohttp import BasicAuth, ClientError, ClientResponseError, ClientTimeout
+from defusedxml import ElementTree as ET
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 _LOGGER = logging.getLogger(__name__)
 
+
+@dataclass(frozen=True, slots=True)
 class EvopellRegister:
     """Represents a single register entry returned by the device."""
 
-    def __init__(
-        self,
-        tid: str,
-        v: str,
-        description: Optional[str] = None,
-        min_value: Optional[str] = None,
-        max_value: Optional[str] = None,
-    ):
-        self.tid = tid
-        self.v = self._convert_value(v)
-        self.min = self._convert_value(min_value)
-        self.max = self._convert_value(max_value)
-        self.description = description
-
-    def __repr__(self):
-        desc = f" desc='{self.description}'" if self.description else ""
-        return f"<Register tid={self.tid} v={self.v} min={self.min} max={self.max}{desc}>"
+    tid: str
+    value: int | float | str
+    description: str | None = None
+    min_value: int | float | str | None = None
+    max_value: int | float | str | None = None
 
     @staticmethod
-    def _convert_value(value: Optional[str]):
-        """Try to convert string to int or float when possible."""
-        if value is None:
+    def from_xml_attrib(
+        attrib: dict[str, str], description: str | None
+    ) -> EvopellRegister | None:
+        """Create register from XML attributes; returns None if required attrs are missing."""
+        tid = attrib.get("tid")
+        v = attrib.get("v")
+        if not tid or v is None:
             return None
-        try:
-            if "." in value:
-                return float(value)
-            return int(value)
-        except ValueError:
-            return value
+
+        return EvopellRegister(
+            tid=tid,
+            value=v,
+            description=description,
+            min_value=attrib.get("min"),
+            max_value=attrib.get("max"),
+        )
+
 
 class EvopellHub:
-    """
-    Synchronous HTTP client for fetching register data from a device.
-    Supports HTTP BasicAuth, retries, timeouts, parameter batching, and parameter descriptions.
-    """
+    """Async HTTP client for fetching register data from a device."""
 
     MAX_PARAMS_PER_REQUEST = 20
 
     def __init__(
         self,
+        hass: HomeAssistant,
         base_url: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None,
+        password: str | None,
         timeout_seconds: int = 5,
         max_retries: int = 3,
         retry_delay: float = 1.5,
-        param_map: Optional[Dict[str, str]] = None,
-    ):
+        param_map: dict[str, str] | None = None,
+    ) -> None:
+        """Initialize EvopellHub."""
+        self._hass = hass
+        self._session = async_get_clientsession(hass)
+        self._timeout = ClientTimeout(total=timeout_seconds)
+
         self.base_url = base_url.rstrip("/")
         self.auth = (username, password) if username and password else None
-        self.timeout_seconds = timeout_seconds
+
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.param_map = param_map or {}
-        self.device_info = {}
 
-    def fetch_registers(self, device_id: int, *params: str) -> List[EvopellRegister]:
-        """
-        Fetch registers from device.
+        self.param_map = {}
+        self.device_info: DeviceInfo | None = None
+        self.registers_data = dict[str, EvopellRegister]
+
+    async def async_read_device_info(self) -> bool:
+        """Read device info and populate self.device_info."""
+        registers = await self.async_fetch_registers(
+            0,
+            "device_id",
+            "device_name",
+            "device_soft_version",
+            "device_type",
+            "eth_mac",
+            "device_hard_version",
+            "eth_ip",
+        )
+        if len(registers) < 7:
+            return False
+
+        # Uwaga: trzymamy się Twojej kolejności
+        device_id = str(registers[0].value)
+        device_name = str(registers[1].value)
+        sw_version = str(registers[2].value)
+        model = str(registers[3].value)
+        mac_raw = str(registers[4].value)
+        hw_version = str(registers[5].value)
+        ip = str(registers[6].value)
+
+        mac_formatted = ":".join(mac_raw[i : i + 2] for i in range(0, 12, 2)).upper()
+        configuration_url = f"http://{ip}"
+        serial_number = f"{device_id}-{mac_raw}"
+
+        self.device_info = DeviceInfo(
+            identifiers={("evopell", serial_number)},
+            name=device_name,
+            manufacturer="Defro",
+            model=model,
+            sw_version=sw_version,
+            hw_version=hw_version,
+            connections={("MAC", mac_formatted)},
+            configuration_url=configuration_url,
+            serial_number=serial_number,
+        )
+        return True
+
+    async def async_fetch_register_values(
+        self, device_id: int, *params: str
+    ) -> dict[str, str]:
+        """Fetch register values as a dictionary."""
+        registers = await self.async_fetch_registers(device_id, *params)
+        return {reg.tid: str(reg.value) for reg in registers}
+
+    async def async_fetch_registers(
+        self, device_id: int, *params: str
+    ) -> list[EvopellRegister]:
+        """Fetch registers from device.
+
         If no parameters are given, all keys from the param_map are used.
         Splits into multiple HTTP requests if necessary (max 20 params/request).
         """
-        # 🔹 Użycie wszystkich parametrów z mapy, jeśli użytkownik nie poda żadnych
+        all_registers: list[EvopellRegister] = []
         if not params:
-            if not self.param_map:
-                raise ValueError("No parameters provided and parameter map is empty.")
-            params = tuple(self.param_map.keys())
-            _LOGGER.debug(f"No params passed — using all {len(params)} parameters from map.")
+            if self.param_map:
+                params = tuple(self.param_map.keys())
+                _LOGGER.debug(
+                    "No params passed — using all %d parameters from map", len(params)
+                )
+            else:
+                _LOGGER.debug(
+                    "No params passed and param_map is empty — nothing to fetch"
+                )
+                return all_registers
 
-        all_registers: List[EvopellRegister] = []
+        _LOGGER.debug("Fetching registers %s from device %d", params, device_id)
+
         for chunk in self._chunked(params, self.MAX_PARAMS_PER_REQUEST):
-            all_registers.extend(self._fetch_chunk(device_id, chunk))
+            registers = await self._async_fetch_chunk(device_id, chunk)
+            all_registers.extend(registers)
+
         return all_registers
 
-    async def read_device_info(self):
-        #registers: List[EvopellRegister] = self.fetch_registers(0,"device_id","device_name","device_soft_version", "device_type", "eth_mac", "device_hard_version","eth_ip");
-        #if not registers:
-        #    return False
-            
-        #device_id = registers[0].v
-        #sw_version = registers[2].v
-        #model = registers[3].v
-        #mac = registers[4].v
-        #mac_formatted = ":".join(mac[i:i+2] for i in range(0, 12, 2)).upper()
-        #hw_version = registers[5].v
-        #ip = registers[6].v
-        #url = f"http://{ip}"
-
-        model = "test"
-        sw_version = "sw"
-        hw_version = "hw"
-        device_id = 1
-        mac_formatted = "q"
-        url = "u"
-        self.device_info = {
-            "manufacturer": "Defro",
-            "model": model,
-            "sw_version": sw_version,
-            "hw_version": hw_version,
-            "device_id": device_id,
-            "connections" : {("MAC", mac_formatted)},
-            "configuration_url": url
-        }
-
-        return True
-    
-    def fetch_register_values(self, device_id: int, *params: str) -> Dict[str, str]:
-        if not params:
-            params = tuple(self.param_map.keys())
-            _LOGGER.debug(f"No params passed — using all {len(params)} parameters from map.")
-
-        registers = self.fetch_registers(device_id, *params)
-        return {reg.tid: str(reg.v) for reg in registers}
-
-    def _fetch_chunk(self, device_id: int, params_chunk: List[str]) -> List[EvopellRegister]:
+    async def _async_fetch_chunk(
+        self, device_id: int, params_chunk: list[str]
+    ) -> list[EvopellRegister]:
         """Fetch one batch of up to MAX_PARAMS_PER_REQUEST parameters."""
         query = "&".join(params_chunk)
         url = f"{self.base_url}/getregister.cgi?device={device_id}&{query}"
 
+        last_error: Exception | None = None
+
         for attempt in range(1, self.max_retries + 1):
             try:
-                response = requests.get(url, auth=self.auth, timeout=self.timeout_seconds)
-                if response.status_code in (401, 403):
-                    _LOGGER.error("Authorization failed (401/403). Stopping retries.")
-                    response.raise_for_status()
+                async with self._session.get(
+                    url,
+                    timeout=self._timeout,
+                    auth=self._build_auth(),
+                ) as resp:
+                    if resp.status in (401, 403):
+                        _LOGGER.error(
+                            "Authorization failed (401/403), stopping retries"
+                        )
+                        resp.raise_for_status()
 
-                response.raise_for_status()
-                return self._parse_xml_response(response.text)
+                    resp.raise_for_status()
+                    text = await resp.text()
+                    return self._parse_xml_response(text)
 
-            except requests.HTTPError as e:
-                if response.status_code in (401, 403):
+            except ClientResponseError as err:
+                last_error = err
+                if err.status in (401, 403):
                     raise
-                _LOGGER.warning(f"[Attempt {attempt}/{self.max_retries}] HTTP error: {e}")
+                _LOGGER.warning(
+                    "[Attempt %d/%d] HTTP error: %s",
+                    attempt,
+                    self.max_retries,
+                    err,
+                )
 
-            except (requests.RequestException, requests.Timeout) as e:
-                _LOGGER.warning(f"[Attempt {attempt}/{self.max_retries}] Network error: {e}")
+            except (ClientError, TimeoutError) as err:
+                last_error = err
+                _LOGGER.warning(
+                    "[Attempt %d/%d] Network error: %s",
+                    attempt,
+                    self.max_retries,
+                    err,
+                )
 
             if attempt < self.max_retries:
-                time.sleep(self.retry_delay)
-            else:
-                _LOGGER.error("Max retry attempts reached. Failing.")
-                raise
+                # Nie blokujemy event loop jak time.sleep
+                await self._hass.async_add_executor_job(lambda: None)
+                await self._hass.async_add_executor_job(lambda: None)
+                await asyncio_sleep(self.retry_delay)
 
-    def _parse_xml_response(self, xml_text: str) -> List[EvopellRegister]:
-        """Parse XML response into a list of Register objects."""
-        registers = []
+        _LOGGER.error("Max retry attempts reached, failing")
+        if last_error:
+            raise last_error
+        return []
+
+    def _build_auth(self):
+        """Build aiohttp BasicAuth or return None."""
+        if not self.auth:
+            return None
+
+        return BasicAuth(*self.auth)
+
+    def _parse_xml_response(self, xml_text: str) -> list[EvopellRegister]:
+        """Parse XML response into a list of register objects."""
+        registers: list[EvopellRegister] = []
         root = ET.fromstring(xml_text)
+
         for reg in root.findall(".//reg"):
-            tid = reg.attrib.get("tid")
-            v = reg.attrib.get("v")
-            min_value = reg.attrib.get("min")
-            max_value = reg.attrib.get("max")
-            description = self.param_map.get(tid)
-            registers.append(EvopellRegister(tid, v, description, min_value, max_value))
+            item = EvopellRegister.from_xml_attrib(
+                reg.attrib, self.param_map.get(reg.attrib.get("tid", ""))
+            )
+            if item is not None:
+                registers.append(item)
+
         return registers
 
     @staticmethod
-    def _chunked(iterable, size):
+    def _chunked(iterable: Any, size: int):
         """Yield successive chunks (batches) of given size."""
         it = iter(iterable)
         while True:
@@ -190,15 +246,31 @@ class EvopellHub:
                 break
             yield chunk
 
-class EvopellCoordinator(DataUpdateCoordinator):
+    async def async_close(self) -> None:
+        """Close any resources if needed."""
+        # HA zarządza sesją aiohttp, więc tu zwykle nic nie robimy
+        return
+
+
+# Minimalny, bezpieczny sleep async bez importu time.sleep
+async def asyncio_sleep(seconds: float) -> None:
+    """Async sleep helper."""
+
+    await asyncio.sleep(seconds)
+
+
+class EvopellCoordinator(DataUpdateCoordinator[dict[str, str]]):
+    """Evopell data update coordinator."""
+
     def __init__(
-        self, 
+        self,
         hass: HomeAssistant,
         entry: ConfigEntry,
         hub: EvopellHub,
-        name,
-        scan_interval,
+        name: str,
+        scan_interval: int,
     ) -> None:
+        """Initialize EvopellCoordinator."""
         super().__init__(
             hass,
             _LOGGER,
@@ -206,30 +278,23 @@ class EvopellCoordinator(DataUpdateCoordinator):
             name=name,
             update_interval=timedelta(seconds=scan_interval),
         )
-        self._name = name
-        self._hub = hub
-        self._scan_interval = scan_interval
-        self.evopell_data = {}
+        self.hub = hub
 
-    async def _async_setup(self):
-        if not await self._hub.read_device_info():
+    async def _async_setup(self) -> None:
+        """Run one-time setup before the first refresh."""
+        ok = await self.hub.async_read_device_info()
+        if not ok:
             raise UpdateFailed("Unable to read device info")
-        
-    def _update(self) -> dict:
-        """Update."""
+
+    async def _async_update_data(self) -> dict[str, str]:
+        """Fetch fresh data for entities."""
+        _LOGGER.debug("Fetching new data from Evopell device")
         try:
-            self.evopell_data = self._hub.fetch_register_values(0)
-            return self.evopell_data
-        except Exception as error:
-            raise UpdateFailed(error) from error
-    
-    async def _async_update_data(self) -> dict:
-        """Time to update."""
-        try:
-            return await self.hass.async_add_executor_job(self._update)
-        except Exception as exc:
-            raise UpdateFailed(f"Error updating evpell data: {exc}") from exc
-    
+            return await self.hub.async_fetch_register_values(0)
+        except Exception as err:
+            raise UpdateFailed("Error updating evopell data") from err
+
     @property
-    def device_info(self):
-        return self._hub.device_info
+    def device_info(self) -> DeviceInfo | None:
+        """Expose device info collected by the hub."""
+        return self.hub.device_info

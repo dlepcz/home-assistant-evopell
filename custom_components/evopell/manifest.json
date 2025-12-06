@@ -3,7 +3,7 @@
     "name": "Defro Evopell",
     "version": "1.0.0",
     "documentation": "https://github.com/dlepcz/home-assistant-evopell",
-    "requirements": [],
+    "requirements": ["defusedxml==0.7.1"],
     "dependencies": [],
     "codeowners": ["@dlepcz"],
     "config_flow": true
