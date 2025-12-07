@@ -31,6 +31,7 @@ class EvopellRegister:
     description: str | None = None
     min_value: int | float | str | None = None
     max_value: int | float | str | None = None
+    status: str | None = None
 
     @staticmethod
     def from_xml_attrib(
@@ -40,6 +41,13 @@ class EvopellRegister:
         tid = attrib.get("tid")
         v = attrib.get("v")
         if not tid or v is None:
+            return None
+
+        status = attrib.get("status")
+        if status:
+            _LOGGER.error(
+                "Register %s has status %s, skipping as read register", tid, status
+            )
             return None
 
         return EvopellRegister(

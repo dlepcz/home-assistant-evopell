@@ -59,6 +59,14 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str]] = {
         "display_precision": "0",
         "icon": "mdi:fire",
     },
+    "act_dm_speed": {
+        "type": "sensor",
+        "description": "Moc dmuchawy",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "display_precision": "0",
+        "icon": "mdi:wind-power",
+    },
     "ob1_zaw4d_pos": {
         "type": "sensor",
         "description": "Procent otwarcia zaworu 3d",
