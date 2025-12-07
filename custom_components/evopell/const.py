@@ -56,19 +56,38 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str]] = {
         "device_class": "SensorDeviceClass.POWER",
         "native_unit_of_measurement": "UnitOfPower.KILO_WATT",
         "state_class": "SensorStateClass.MEASUREMENT",
+        "display_precision": "0",
         "icon": "mdi:fire",
     },
     "ob1_zaw4d_pos": {
         "type": "sensor",
-        "description": "Stopień otwarcia zaworu 3d",
+        "description": "Procent otwarcia zaworu 3d",
         "native_unit_of_measurement": "PERCENTAGE",
         "state_class": "SensorStateClass.MEASUREMENT",
         "icon": "mdi:valve",
     },
     "zaw4d_dir": {
         "type": "sensor",
-        "description": "Kierunek zaworu 3d",
+        "description": "Kierunek otwarcia zaworu 3d",
         "icon": "mdi:swap-horizontal",
+    },
+    "tryb_auto_state": {"type": "sensor", "description": "Tryb pracy"},
+    "fuel_level": {
+        "type": "sensor",
+        "description": "Poziom pelletu",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "icon": "mdi:gas-station-in-use",
+    },
+    "pl_status": {
+        "type": "sensor",
+        "description": "Status",
+        "icon": "mdi:information-outline",
+    },
+    "out_pomp1": {
+        "type": "binary_sensor",
+        "description": "Pompa CO",
+        "icon": "mdi:pump",
     },
 }
 

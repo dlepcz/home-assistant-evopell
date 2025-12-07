@@ -79,6 +79,10 @@ async def async_setup_entry(
         unit = parse_sensor_unit(cfg.get("native_unit_of_measurement"))  # type: ignore[arg-type]
         state_class = parse_sensor_state_class(cfg.get("state_class"))  # type: ignore[arg-type]
         icon = cfg.get("icon")  # type: ignore[arg-type]
+        try:
+            display_precision = int(str(cfg.get("display_precision")))
+        except ValueError:
+            display_precision = None
 
         entities.append(
             EvopellSensor(
@@ -90,24 +94,26 @@ async def async_setup_entry(
                     native_unit_of_measurement=unit,
                     state_class=state_class,
                     icon=icon,
+                    suggested_display_precision=display_precision,
                 ),
             )
         )
 
-        if tid == "zaw4d_dir":
-            entities.append(
-                EvopellSensor(
-                    evopell,
-                    SensorEntityDescription(
-                        key=f"{tid}_text",
-                        name=f"{name} (text)",
-                        device_class=None,
-                        native_unit_of_measurement=None,
-                        state_class=None,
-                        icon=icon,
-                    ),
+        match tid:
+            case "zaw4d_dir" | "tryb_auto_state" | "pl_status":
+                entities.append(
+                    EvopellSensor(
+                        evopell,
+                        SensorEntityDescription(
+                            key=f"{tid}_text",
+                            name=f"{name} (text)",
+                            device_class=None,
+                            native_unit_of_measurement=None,
+                            state_class=None,
+                            icon=icon,
+                        ),
+                    )
                 )
-            )
 
     async_add_entities(entities)
 
@@ -132,12 +138,37 @@ class EvopellSensor(EvopellEntity, SensorEntity):
         result = self.coordinator.data.get(tid)
         if tid.endswith("_text"):
             prefix = tid.removesuffix("_text")
-            if prefix == "zaw4d_dir":
-                result = self.coordinator.data.get(prefix)
-                if result == "1":
-                    result = "Prawo"
-                else:
-                    result = "Lewo"
+            result = self.coordinator.data.get(prefix)
+            match prefix:
+                case "tryb_auto_state":
+                    match result:
+                        case "0":
+                            result = "Ręczny"
+                        case "1":
+                            result = "Automatyczny"
+                        case "2":
+                            result = "Alarmowy"
+                        case _:
+                            result = "Nieznany"
+                case "zaw4d_dir":
+                    if result == "1":
+                        result = "Lewo"
+                    else:
+                        result = "Prawo"
+                case "pl_status":
+                    match result:
+                        case "0":
+                            result = "Stop"
+                        case "1":
+                            result = "Rozpalanie"
+                        case "2":
+                            result = "Praca"
+                        case "3":
+                            result = "Wygaszanie"
+                        case "4":
+                            result = "Czyszczenie"
+                        case _:
+                            result = "Nieznany"
         return result
 
     @callback
@@ -149,3 +180,12 @@ class EvopellSensor(EvopellEntity, SensorEntity):
     @callback
     def _async_update_attrs(self) -> None:
         """Update extra attributes."""
+        tid = self.entity_description.key
+        if tid.endswith("_text"):
+            tid = tid.removesuffix("_text")
+        register = self.coordinator.hub.registers_data[tid]
+        if register is not None:
+            self._attr_extra_state_attributes = {
+                "min": register.min_value,
+                "max": register.max_value,
+            }

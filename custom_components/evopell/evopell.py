@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from itertools import islice
 import logging
@@ -79,7 +79,7 @@ class EvopellHub:
 
         self.param_map = {}
         self.device_info: DeviceInfo | None = None
-        self.registers_data = dict[str, EvopellRegister]
+        self.registers_data: dict[str, EvopellRegister] = {}
 
     async def async_read_device_info(self) -> bool:
         """Read device info and populate self.device_info."""
@@ -155,6 +155,20 @@ class EvopellHub:
         for chunk in self._chunked(params, self.MAX_PARAMS_PER_REQUEST):
             registers = await self._async_fetch_chunk(device_id, chunk)
             all_registers.extend(registers)
+
+        for reg in all_registers:
+            existing = self.registers_data.get(reg.tid)
+            self.registers_data[reg.tid] = (
+                reg
+                if existing is None
+                else replace(
+                    existing,
+                    value=reg.value,
+                    description=reg.description,
+                    min_value=reg.min_value,
+                    max_value=reg.max_value,
+                )
+            )
 
         return all_registers
 

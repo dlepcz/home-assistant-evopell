@@ -11,8 +11,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import CONF_EVOPELL_PASSWORD, CONF_EVOPELL_USER, DOMAIN, EVOPELL_PARAM_MAP
 from .evopell import EvopellCoordinator, EvopellHub
 
-# PLATFORMS = ["number", "select", "sensor", "binary_sensor"]
-PLATFORMS = ["sensor"]
+PLATFORMS = ["binary_sensor", "sensor"]
 
 _LOGGER = logging.getLogger(__name__)
 
