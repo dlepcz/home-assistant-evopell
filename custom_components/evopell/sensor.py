@@ -2,60 +2,21 @@
 
 import logging
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME, PERCENTAGE, UnitOfPower, UnitOfTemperature
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import EvopellCoordinator, EvopellEntity
 from .const import DOMAIN, EVOPELL_PARAM_MAP1
+from .utils import (
+    parse_sensor_device_class,
+    parse_sensor_state_class,
+    parse_sensor_unit,
+)
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def parse_sensor_device_class(text: str | None) -> SensorDeviceClass | None:
-    """Parses sensor device class from string."""
-    if not text:
-        return None
-    prefix = "SensorDeviceClass."
-    name = text.removeprefix(prefix)
-    return getattr(SensorDeviceClass, name, None)
-
-
-def parse_sensor_unit(text: str | None) -> str | None:
-    """Parse HA unit string to its value (e.g. UnitOfTemperature.CELSIUS, UnitOfPower.KILO_WATT, PERCENTAGE)."""
-    if not text:
-        return None
-
-    # Support constant percentage
-    if text == "PERCENTAGE":
-        return PERCENTAGE  # "%"
-
-    for enum_cls, prefix in (
-        (UnitOfTemperature, "UnitOfTemperature."),
-        (UnitOfPower, "UnitOfPower."),
-    ):
-        if text.startswith(prefix):
-            name = text.removeprefix(prefix)
-            unit = getattr(enum_cls, name, None)
-            return unit.value if unit else None
-
-    return None
-
-
-def parse_sensor_state_class(text: str | None) -> SensorStateClass | None:
-    """Parses sensor state class from string."""
-    if not text:
-        return None
-    prefix = "SensorStateClass."
-    name = text.removeprefix(prefix)
-    return getattr(SensorStateClass, name, None)
 
 
 async def async_setup_entry(

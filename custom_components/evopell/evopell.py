@@ -8,6 +8,7 @@ from datetime import timedelta
 from itertools import islice
 import logging
 from typing import Any
+from urllib.parse import urlencode
 
 from aiohttp import BasicAuth, ClientError, ClientResponseError, ClientTimeout
 from defusedxml import ElementTree as ET
@@ -48,6 +49,28 @@ class EvopellRegister:
             min_value=attrib.get("min"),
             max_value=attrib.get("max"),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EvopellWriteRegister:
+    """Represents a single register entry returned by the device after write."""
+
+    vid: str
+    tid: str
+    status: str
+
+    @staticmethod
+    def from_xml_attrib(
+        attrib: dict[str, str], description: str | None
+    ) -> EvopellWriteRegister | None:
+        """Create register from XML attributes; returns None if required attrs are missing."""
+        vid = attrib.get("vid")
+        tid = attrib.get("tid")
+        status = attrib.get("status")
+        if not tid or not vid or not status:
+            return None
+
+        return EvopellWriteRegister(tid=tid, vid=vid, status=status)
 
 
 class EvopellHub:
@@ -122,6 +145,27 @@ class EvopellHub:
         )
         return True
 
+    async def async_write_register_values(
+        self, device_id: int, *params: dict[str, str]
+    ) -> list[EvopellWriteRegister]:
+        """Write register values to device."""
+        return await self.async_write_registers(device_id, *params)
+
+    async def async_write_registers(
+        self, device_id: int, *params: dict[str, str]
+    ) -> list[EvopellWriteRegister]:
+        """Write registers to device."""
+        all_registers: list[EvopellWriteRegister] = []
+        if not params:
+            _LOGGER.debug("No params passed — nothing to write")
+            return all_registers
+
+        for chunk in self._chunked(params, self.MAX_PARAMS_PER_REQUEST):
+            registers = await self._async_write_chunk(device_id, chunk)
+            all_registers.extend(registers)
+
+        return all_registers
+
     async def async_fetch_register_values(
         self, device_id: int, *params: str
     ) -> dict[str, str]:
@@ -172,13 +216,75 @@ class EvopellHub:
 
         return all_registers
 
+    async def _async_write_chunk(
+        self, device_id: int, params_chunk: list[dict[str, str]]
+    ) -> list[EvopellWriteRegister]:
+        """Write one batch of registers."""
+        merged: dict[str, str] = {}
+        for d in params_chunk:
+            merged.update(d)  # jeśli duplikaty kluczy, ostatni wygrywa
+
+        query = urlencode(merged)
+        url = f"{self.base_url}/setregister.cgi?device={device_id}&{query}"
+        _LOGGER.debug("Writing to URL: %s", url)
+
+        last_error: Exception | None = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                async with self._session.get(
+                    url,
+                    timeout=self._timeout,
+                    auth=self._build_auth(),
+                ) as resp:
+                    if resp.status in (401, 403):
+                        _LOGGER.error(
+                            "Authorization failed (401/403), stopping retries"
+                        )
+                        resp.raise_for_status()
+
+                    resp.raise_for_status()
+                    text = await resp.text()
+                    return self._parse_xml_write_response(text)
+
+            except ClientResponseError as err:
+                last_error = err
+                if err.status in (401, 403):
+                    raise
+                _LOGGER.warning(
+                    "[Attempt %d/%d] HTTP error: %s",
+                    attempt,
+                    self.max_retries,
+                    err,
+                )
+
+            except (ClientError, TimeoutError) as err:
+                last_error = err
+                _LOGGER.warning(
+                    "[Attempt %d/%d] Network error: %s",
+                    attempt,
+                    self.max_retries,
+                    err,
+                )
+
+            if attempt < self.max_retries:
+                # Nie blokujemy event loop jak time.sleep
+                await self._hass.async_add_executor_job(lambda: None)
+                await self._hass.async_add_executor_job(lambda: None)
+                await asyncio_sleep(self.retry_delay)
+
+        _LOGGER.error("Max retry attempts reached, failing")
+        if last_error:
+            raise last_error
+        return []
+
     async def _async_fetch_chunk(
         self, device_id: int, params_chunk: list[str]
     ) -> list[EvopellRegister]:
         """Fetch one batch of up to MAX_PARAMS_PER_REQUEST parameters."""
         query = "&".join(params_chunk)
         url = f"{self.base_url}/getregister.cgi?device={device_id}&{query}"
-
+        _LOGGER.debug("Fetching from URL: %s", url)
         last_error: Exception | None = None
 
         for attempt in range(1, self.max_retries + 1):
@@ -243,6 +349,20 @@ class EvopellHub:
 
         for reg in root.findall(".//reg"):
             item = EvopellRegister.from_xml_attrib(
+                reg.attrib, self.param_map.get(reg.attrib.get("tid", ""))
+            )
+            if item is not None:
+                registers.append(item)
+
+        return registers
+
+    def _parse_xml_write_response(self, xml_text: str) -> list[EvopellWriteRegister]:
+        """Parse XML response into a list of register objects."""
+        registers: list[EvopellWriteRegister] = []
+        root = ET.fromstring(xml_text)
+
+        for reg in root.findall(".//reg"):
+            item = EvopellWriteRegister.from_xml_attrib(
                 reg.attrib, self.param_map.get(reg.attrib.get("tid", ""))
             )
             if item is not None:

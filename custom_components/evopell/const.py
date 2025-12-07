@@ -71,7 +71,11 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str]] = {
         "description": "Kierunek otwarcia zaworu 3d",
         "icon": "mdi:swap-horizontal",
     },
-    "tryb_auto_state": {"type": "sensor", "description": "Tryb pracy"},
+    "tryb_auto_state": {
+        "type": "sensor",
+        "description": "Tryb pracy",
+        "icon": "mdi:information-outline",
+    },
     "fuel_level": {
         "type": "sensor",
         "description": "Poziom pelletu",
@@ -88,6 +92,42 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str]] = {
         "type": "binary_sensor",
         "description": "Pompa CO",
         "icon": "mdi:pump",
+    },
+    "out_dm": {
+        "type": "binary_sensor",
+        "description": "Dmuchawa",
+        "icon": "mdi:fan",
+    },
+    "out_tank": {
+        "type": "binary_sensor",
+        "description": "Pompa bufora",
+        "icon": "mdi:pump",
+    },
+    "tank_tzad": {
+        "type": "number",
+        "description": "Temperatura zadana w buforze",
+        "device_class": "NumberDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:thermometer",
+        "step": "1",
+    },
+    "tpow_min": {
+        "type": "number",
+        "description": "Minimalna temperatura powrotu",
+        "device_class": "NumberDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:thermometer",
+        "step": "1",
+    },
+    "ob1_zaw4d_max": {
+        "type": "number",
+        "description": "Maksymalny kąt otwarcia zaworu 3D",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:thermometer",
+        "step": "1",
     },
 }
 
