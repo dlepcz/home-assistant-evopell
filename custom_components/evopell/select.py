@@ -1,6 +1,5 @@
 """async_setup_entry dla select Evopell."""
 
-from dataclasses import dataclass
 import logging
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
