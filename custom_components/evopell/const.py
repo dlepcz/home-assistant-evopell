@@ -7,7 +7,34 @@ DEFAULT_NAME = "evopell"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_PORT = 80
 
-EVOPELL_PARAM_MAP1: dict[str, dict[str, str]] = {
+EVOPELL_PARMAS_TO_TEXT_MAP = {
+    "tryb_auto_state": {
+        "0": "Ręczny",
+        "1": "Automatyczny",
+        "2": "Alarmowy",
+    },
+    "zaw4d_dir": {
+        "0": "Prawo",
+        "1": "Lewo",
+    },
+    "pl_status": {
+        "0": "Stop",
+        "1": "Rozpalanie",
+        "2": "Praca",
+        "3": "Wygaszanie",
+        "4": "Czyszczenie",
+    },
+}
+EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
+    "skrypty": {
+        "type": "script",
+        "description": "Skrypty",
+        "options": {
+            "Rozpalanie": {"tpow_min": "59", "ob1_zaw4d_max": "50", "zaw4d_dir": "1"},
+            "Wygaszanie": {"tpow_min": "45", "ob1_zaw4d_max": "100"},
+            "Stop": {"tpow_min": "59", "ob1_zaw4d_max": "100", "zaw4d_dir": "1"},
+        },
+    },
     "tkot_value": {
         "type": "sensor",
         "description": "Temperatura kotła",

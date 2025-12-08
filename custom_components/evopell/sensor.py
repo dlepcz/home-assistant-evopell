@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import EvopellCoordinator, EvopellEntity
-from .const import DOMAIN, EVOPELL_PARAM_MAP1
+from .const import DOMAIN, EVOPELL_PARAM_MAP1, EVOPELL_PARMAS_TO_TEXT_MAP
 from .utils import (
     parse_sensor_device_class,
     parse_sensor_state_class,
@@ -40,6 +40,10 @@ async def async_setup_entry(
         unit = parse_sensor_unit(cfg.get("native_unit_of_measurement"))  # type: ignore[arg-type]
         state_class = parse_sensor_state_class(cfg.get("state_class"))  # type: ignore[arg-type]
         icon = cfg.get("icon")  # type: ignore[arg-type]
+        if icon:
+            icon_str = str(icon)
+        else:
+            icon_str = None
         try:
             display_precision = int(str(cfg.get("display_precision")))
         except ValueError:
@@ -54,7 +58,7 @@ async def async_setup_entry(
                     device_class=device_class,
                     native_unit_of_measurement=unit,
                     state_class=state_class,
-                    icon=icon,
+                    icon=icon_str,
                     suggested_display_precision=display_precision,
                 ),
             )
@@ -71,7 +75,7 @@ async def async_setup_entry(
                             device_class=None,
                             native_unit_of_measurement=None,
                             state_class=None,
-                            icon=icon,
+                            icon=icon_str,
                         ),
                     )
                 )
@@ -100,36 +104,11 @@ class EvopellSensor(EvopellEntity, SensorEntity):
         if tid.endswith("_text"):
             prefix = tid.removesuffix("_text")
             result = self.coordinator.data.get(prefix)
-            match prefix:
-                case "tryb_auto_state":
-                    match result:
-                        case "0":
-                            result = "Ręczny"
-                        case "1":
-                            result = "Automatyczny"
-                        case "2":
-                            result = "Alarmowy"
-                        case _:
-                            result = "Nieznany"
-                case "zaw4d_dir":
-                    if result == "1":
-                        result = "Lewo"
-                    else:
-                        result = "Prawo"
-                case "pl_status":
-                    match result:
-                        case "0":
-                            result = "Stop"
-                        case "1":
-                            result = "Rozpalanie"
-                        case "2":
-                            result = "Praca"
-                        case "3":
-                            result = "Wygaszanie"
-                        case "4":
-                            result = "Czyszczenie"
-                        case _:
-                            result = "Nieznany"
+            text_map = EVOPELL_PARMAS_TO_TEXT_MAP.get(prefix)
+            if text_map and result in text_map:
+                result = text_map[result]
+            else:
+                result = "Nieznany"
         return result
 
     @callback
@@ -144,9 +123,13 @@ class EvopellSensor(EvopellEntity, SensorEntity):
         tid = self.entity_description.key
         if tid.endswith("_text"):
             tid = tid.removesuffix("_text")
-        register = self.coordinator.hub.registers_data[tid]
-        if register is not None:
-            self._attr_extra_state_attributes = {
-                "min": register.min_value,
-                "max": register.max_value,
-            }
+            text_map = EVOPELL_PARMAS_TO_TEXT_MAP.get(tid)
+            if text_map:
+                self._attr_extra_state_attributes = text_map
+        else:
+            register = self.coordinator.hub.registers_data[tid]
+            if register is not None:
+                self._attr_extra_state_attributes = {
+                    "min": register.min_value,
+                    "max": register.max_value,
+                }

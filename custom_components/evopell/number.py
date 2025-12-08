@@ -40,7 +40,7 @@ async def async_setup_entry(
         evopell.hub.param_map[tid] = name  # Register parameter in hub's param_map
         device_class = parse_number_device_class(cfg.get("device_class"))  # type: ignore[arg-type]
         unit = parse_sensor_unit(cfg.get("native_unit_of_measurement"))  # type: ignore[arg-type]
-        icon = cfg.get("icon")  # type: ignore[arg-type]
+        icon = str(cfg.get("icon"))  # type: ignore[arg-type]
         mode = parse_number_mode(cfg.get("mode"))  # type: ignore[arg-type]
         step = to_float(str(cfg.get("step")))
         entities.append(
