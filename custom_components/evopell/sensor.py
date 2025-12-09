@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import EvopellCoordinator, EvopellEntity
 from .const import DOMAIN, EVOPELL_PARAM_MAP1, EVOPELL_PARMAS_TO_TEXT_MAP
 from .utils import (
+    epoch_to_datetime,
     parse_sensor_device_class,
     parse_sensor_state_class,
     parse_sensor_unit,
@@ -96,7 +97,7 @@ class EvopellSensor(EvopellEntity, SensorEntity):
         self._attr_unique_id = f"{self.coordinator.name}_{description.key}"
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self):
         """Zwraca wartość sensora."""
         tid = self.entity_description.key
         _LOGGER.debug("Native value for senosr %s", tid)
@@ -109,6 +110,8 @@ class EvopellSensor(EvopellEntity, SensorEntity):
                 result = text_map[result]
             else:
                 result = "Nieznany"
+        if self.entity_description.device_class == "timestamp" and result is not None:
+            result = epoch_to_datetime(result)
         return result
 
     @callback
@@ -126,7 +129,7 @@ class EvopellSensor(EvopellEntity, SensorEntity):
             text_map = EVOPELL_PARMAS_TO_TEXT_MAP.get(tid)
             if text_map:
                 self._attr_extra_state_attributes = text_map
-        else:
+        elif self.entity_description.device_class != "timestamp":
             register = self.coordinator.hub.registers_data[tid]
             if register is not None:
                 self._attr_extra_state_attributes = {

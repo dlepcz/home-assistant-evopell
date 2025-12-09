@@ -156,6 +156,24 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "icon": "mdi:thermometer",
         "step": "1",
     },
+    "kot_tzad": {
+        "type": "number",
+        "description": "Temperatura zadana w kotła",
+        "device_class": "NumberDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:thermometer",
+        "step": "1",
+    },
+    "ob1_zaw4d_tzad": {
+        "type": "number",
+        "description": "Temperatura zadana za zaworem 3D",
+        "device_class": "NumberDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:thermometer",
+        "step": "1",
+    },
     "ob1_zaw4d_max": {
         "type": "number",
         "description": "Maksymalny kąt otwarcia zaworu 3D",
@@ -163,6 +181,12 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "mode": "NumberMode.BOX",
         "icon": "mdi:thermometer",
         "step": "1",
+    },
+    "next_fuel_time": {
+        "type": "sensor",
+        "description": "Data następnego zasypu",
+        "device_class": "SensorDeviceClass.TIMESTAMP",
+        "icon": "mdi:clock-outline",
     },
 }
 

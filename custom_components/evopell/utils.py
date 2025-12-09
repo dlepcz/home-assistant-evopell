@@ -1,5 +1,6 @@
 """Utility functions for Evopell integration."""
 
+from datetime import UTC, datetime
 import logging
 
 from homeassistant.components.number import NumberDeviceClass, NumberMode
@@ -74,3 +75,14 @@ def to_float(value: str | None) -> float | None:
         return float(value.strip().replace(",", "."))
     except (ValueError, AttributeError):
         return None
+
+
+def epoch_to_datetime(value: str | float | None) -> datetime | None:
+    """Convert epoch timestamp to datetime object in UTC."""
+    if value is None:
+        return None
+    try:
+        ts = int(value)
+    except (TypeError, ValueError):
+        return None
+    return datetime.fromtimestamp(ts, tz=UTC)
