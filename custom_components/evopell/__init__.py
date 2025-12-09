@@ -28,15 +28,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
     port = entry.data[CONF_PORT]
-    scan_interval = entry.data[CONF_SCAN_INTERVAL]
+    scan_interval = entry.options.get(
+        CONF_SCAN_INTERVAL, entry.data[CONF_SCAN_INTERVAL]
+    )
+    username = entry.options.get(CONF_EVOPELL_USER, entry.data[CONF_EVOPELL_USER])
+    password = entry.options.get(
+        CONF_EVOPELL_PASSWORD, entry.data[CONF_EVOPELL_PASSWORD]
+    )
+
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     _LOGGER.debug("Setup %s.%s", DOMAIN, name)
 
     hub = EvopellHub(
         hass,
         base_url=f"http://{host}:{port}",
-        username=entry.data[CONF_EVOPELL_USER],
-        password=entry.data[CONF_EVOPELL_PASSWORD],
+        username=username,
+        password=password,
         timeout_seconds=5,
         max_retries=3,
         param_map=EVOPELL_PARAM_MAP,
@@ -65,6 +73,11 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """Remove a config entry from a device."""
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    _LOGGER.debug("Reloading Evopell config entry %s", entry.entry_id)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class EvopellEntity(CoordinatorEntity[EvopellCoordinator]):
