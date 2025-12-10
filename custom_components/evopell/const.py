@@ -7,7 +7,7 @@ DEFAULT_NAME = "evopell"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_PORT = 80
 
-EVOPELL_PARMAS_TO_TEXT_MAP = {
+EVOPELL_PARMAS_TO_TEXT_MAP: dict[str, dict[str, str]] = {
     "tryb_auto_state": {
         "0": "Ręczny",
         "1": "Automatyczny",

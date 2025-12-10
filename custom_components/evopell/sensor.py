@@ -123,16 +123,20 @@ class EvopellSensor(EvopellEntity, SensorEntity):
     @callback
     def _async_update_attrs(self) -> None:
         """Update extra attributes."""
-        tid = self.entity_description.key
-        if tid.endswith("_text"):
-            tid = tid.removesuffix("_text")
-            text_map = EVOPELL_PARMAS_TO_TEXT_MAP.get(tid)
-            if text_map:
-                self._attr_extra_state_attributes = text_map
-        elif self.entity_description.device_class != "timestamp":
+        if self.entity_description.device_class != "timestamp":
+            tid = self.entity_description.key
+            if tid.endswith("_text"):
+                tid = tid.removesuffix("_text")
             register = self.coordinator.hub.registers_data[tid]
             if register is not None:
-                self._attr_extra_state_attributes = {
-                    "min": register.min_value,
-                    "max": register.max_value,
-                }
+                extra_attrs = {}
+                if register.min_value:
+                    extra_attrs["min"] = register.min_value
+                if register.max_value:
+                    extra_attrs["max"] = register.max_value
+                if tid in EVOPELL_PARMAS_TO_TEXT_MAP:
+                    extra_attrs.update(
+                        {v: k for k, v in EVOPELL_PARMAS_TO_TEXT_MAP[tid].items()}
+                    )
+
+                self._attr_extra_state_attributes = extra_attrs

@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import EvopellCoordinator, EvopellEntity
-from .const import DOMAIN, EVOPELL_PARAM_MAP1
+from .const import DOMAIN, EVOPELL_PARAM_MAP1, EVOPELL_PARMAS_TO_TEXT_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +45,21 @@ async def async_setup_entry(
                 registers=options_dict,
             )
         )
+
+    for k, v in EVOPELL_PARMAS_TO_TEXT_MAP.items():
+        tid = f"{k}"
+        entities.append(
+            EvopellSelect(
+                evopell,
+                SelectEntityDescription(
+                    key=tid,
+                    name=str(EVOPELL_PARAM_MAP1[k].get("description", k)),
+                    options=list(v.values()),
+                ),
+                registers=None,
+            )
+        )
+
     async_add_entities(entities)
 
 
@@ -67,6 +82,23 @@ class EvopellSelect(EvopellEntity, SelectEntity):
     @property
     def current_option(self) -> str:
         """Get current option."""
+        _LOGGER.debug("Current option for select %s", self.entity_description.key)
+        if self.entity_description.key in self.coordinator.hub.registers_data:
+            _LOGGER.debug("Found register for select %s", self.entity_description.key)
+            value = self.coordinator.hub.registers_data[self.entity_description.key]
+            if value is not None:
+                _LOGGER.debug(
+                    "Value for select %s: %s", self.entity_description.key, value
+                )
+                if self.entity_description.key in EVOPELL_PARMAS_TO_TEXT_MAP:
+                    text_map = EVOPELL_PARMAS_TO_TEXT_MAP[self.entity_description.key]
+                    _LOGGER.debug(
+                        "Text map for select %s: %s -> %s",
+                        self.entity_description.key,
+                        text_map,
+                        text_map.get(str(value.value), ""),
+                    )
+                    return text_map.get(str(value.value), "")
         return ""
 
     @callback
