@@ -65,6 +65,7 @@ class EvopellWriteRegister:
 
     vid: str
     tid: str
+    value: str
     status: str
 
     @staticmethod
@@ -74,11 +75,12 @@ class EvopellWriteRegister:
         """Create register from XML attributes; returns None if required attrs are missing."""
         vid = attrib.get("vid")
         tid = attrib.get("tid")
+        value = attrib.get("v")
         status = attrib.get("status")
-        if not tid or not vid or not status:
+        if not tid or not vid or not status or value is None:
             return None
 
-        return EvopellWriteRegister(tid=tid, vid=vid, status=status)
+        return EvopellWriteRegister(tid=tid, vid=vid, value=value, status=status)
 
 
 class EvopellHub:

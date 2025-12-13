@@ -8,7 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_EVOPELL_PASSWORD, CONF_EVOPELL_USER, DOMAIN, EVOPELL_PARAM_MAP
+from .const import (
+    CONF_EVOPELL_PASSWORD,
+    CONF_EVOPELL_USER,
+    DOMAIN,
+    EVOPELL_PARAM_MAP,
+    EVOPELL_PARAM_MAP1,
+)
 from .evopell import EvopellCoordinator, EvopellHub
 
 PLATFORMS = ["binary_sensor", "number", "select", "sensor"]
@@ -51,11 +57,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
     coordinator = EvopellCoordinator(hass, entry, hub, name, scan_interval)
 
-    await coordinator.async_config_entry_first_refresh()
+    for tid, cfg in EVOPELL_PARAM_MAP1.items():
+        if (
+            cfg.get("type") == "sensor"
+            or cfg.get("type") == "number"
+            or cfg.get("type") == "binary_sensor"
+        ):
+            coordinator.hub.param_map[tid] = str(cfg.get("description", tid))
 
+    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][name] = {"evopell": coordinator}
 
+    await coordinator.async_config_entry_first_refresh()
+    # hass.data[DOMAIN][name] = {"evopell": coordinator}
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # await coordinator.async_config_entry_first_refresh()
+
     return True
 
 

@@ -1,5 +1,6 @@
 """Number platform for Evopell integration."""
 
+from dataclasses import replace
 import logging
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
@@ -92,10 +93,24 @@ class EvopellNumber(EvopellEntity, NumberEntity):
         super()._handle_coordinator_update()
 
     @property
-    def native_value(self) -> float:
+    def native_value(self) -> float | None:
         """Get native value."""
-        value = to_float(self.coordinator.data.get(self.entity_description.key))
-        return value if value is not None else 0.0
+        tid = self.entity_description.key
+        _LOGGER.debug("Native value for number %s", tid)
+        result = None
+        if tid in self.coordinator.hub.registers_data:
+            register = self.coordinator.hub.registers_data[tid]
+            if register is not None:
+                result = register.value
+
+        if result is None and isinstance(self.coordinator.data, dict):
+            result = self.coordinator.data.get(tid)
+
+        if result is not None:
+            value = to_float(str(result))
+            return value if value is not None else 0.0
+
+        return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Change the selected value."""
@@ -110,5 +125,18 @@ class EvopellNumber(EvopellEntity, NumberEntity):
             )
             return
         _LOGGER.debug("Written registers: %s", registers)
-
+        for k in registers:
+            if k.status == "ok":
+                self.coordinator.data[k.tid] = k.value
+                if k.tid in self.coordinator.hub.registers_data:
+                    reg = self.coordinator.hub.registers_data[k.tid]
+                    self.coordinator.hub.registers_data[k.tid] = replace(
+                        reg,
+                        value=k.value,
+                        description=reg.description,
+                        min_value=reg.min_value,
+                        max_value=reg.max_value,
+                    )
+            else:
+                _LOGGER.error("Failed to write register %s: status %s", k.tid, k.status)
         self.async_write_ha_state()

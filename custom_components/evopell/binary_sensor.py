@@ -33,7 +33,7 @@ async def async_setup_entry(
             continue
 
         name = str(cfg.get("description", tid))
-        icon = cfg.get("icon")  # type: ignore[arg-type]
+        icon = str(cfg.get("icon"))
         evopell.hub.param_map[tid] = name
         entities.append(
             EvopellBinarySensor(

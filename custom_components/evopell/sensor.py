@@ -65,22 +65,6 @@ async def async_setup_entry(
             )
         )
 
-        match tid:
-            case "zaw4d_dir" | "tryb_auto_state" | "pl_status":
-                entities.append(
-                    EvopellSensor(
-                        evopell,
-                        SensorEntityDescription(
-                            key=f"{tid}_text",
-                            name=f"{name} (text)",
-                            device_class=None,
-                            native_unit_of_measurement=None,
-                            state_class=None,
-                            icon=icon_str,
-                        ),
-                    )
-                )
-
     async_add_entities(entities)
 
 
@@ -101,17 +85,17 @@ class EvopellSensor(EvopellEntity, SensorEntity):
         """Zwraca wartość sensora."""
         tid = self.entity_description.key
         _LOGGER.debug("Native value for senosr %s", tid)
-        result = self.coordinator.data.get(tid)
-        if tid.endswith("_text"):
-            prefix = tid.removesuffix("_text")
-            result = self.coordinator.data.get(prefix)
-            text_map = EVOPELL_PARMAS_TO_TEXT_MAP.get(prefix)
-            if text_map and result in text_map:
-                result = text_map[result]
-            else:
-                result = "Nieznany"
-        if self.entity_description.device_class == "timestamp" and result is not None:
+        result = None
+        if tid in self.coordinator.hub.registers_data:
+            register = self.coordinator.hub.registers_data[tid]
+            if register is not None:
+                result = register.value
+        if result is None and isinstance(self.coordinator.data, dict):
+            result = self.coordinator.data.get(tid)
+
+        if result is not None and self.entity_description.device_class == "timestamp":
             result = epoch_to_datetime(result)
+
         return result
 
     @callback

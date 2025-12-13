@@ -33,6 +33,8 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
             "Rozpalanie": {"tpow_min": "59", "ob1_zaw4d_max": "50", "zaw4d_dir": "1"},
             "Wygaszanie": {"tpow_min": "45", "ob1_zaw4d_max": "100"},
             "Stop": {"tpow_min": "59", "ob1_zaw4d_max": "100", "zaw4d_dir": "1"},
+            "Cyrkulacja start": {"zaw4d_dir": "0"},
+            "Cyrkulacja stop": {"zaw4d_dir": "1"},
         },
     },
     "tkot_value": {
