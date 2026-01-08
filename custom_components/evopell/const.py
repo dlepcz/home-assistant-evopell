@@ -190,6 +190,21 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "device_class": "SensorDeviceClass.TIMESTAMP",
         "icon": "mdi:clock-outline",
     },
+    "pl_clean_toff": {
+        "type": "number",
+        "description": "Czas pomiędzy czyszczeniem",
+        "native_unit_of_measurement": "min",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:wrench-clock",
+        "step": "1",
+    },
+    "pl_wyg_cnt": {
+        "type": "number",
+        "description": "Ilość cykli czyszczenia",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:recycle-variant",
+        "step": "1",
+    },
 }
 
 EVOPELL_PARAM_MAP = {
@@ -381,7 +396,7 @@ EVOPELL_PARAM_MAP = {
     "pl_hfire": "",
     "pl_power": "",
     "pl_clean": "",
-    "pl_clean_toff": "",
+    "pl_clean_toff": "Czas pomiędzy czyszczeniem",
     "pl_roz_dm": "",
     "pl_roz_fire": "",
     "pl_roz_fuel": "",
