@@ -5,7 +5,13 @@ import logging
 
 from homeassistant.components.number import NumberDeviceClass, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import PERCENTAGE, UnitOfPower, UnitOfTemperature
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfPower,
+    UnitOfPressure,
+    UnitOfTemperature,
+    UnitOfVolumeFlowRate,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,9 +52,14 @@ def parse_sensor_unit(text: str | None) -> str | None:
     if text == "PERCENTAGE":
         return PERCENTAGE  # "%"
 
+    if text.startswith("OWN."):
+        return text.removeprefix("OWN.")
+
     for enum_cls, prefix in (
         (UnitOfTemperature, "UnitOfTemperature."),
         (UnitOfPower, "UnitOfPower."),
+        (UnitOfVolumeFlowRate, "UnitOfMassFlowRate."),
+        (UnitOfPressure, "UnitOfPressure."),
     ):
         if text.startswith(prefix):
             name = text.removeprefix(prefix)

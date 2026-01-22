@@ -120,6 +120,27 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "state_class": "SensorStateClass.MEASUREMENT",
         "icon": "mdi:gas-station-in-use",
     },
+    "pl_fuel_flow": {
+        "type": "sensor",
+        "description": "Przepływ pelletu",
+        "native_unit_of_measurement": "OWN.kg/h",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "icon": "mdi:gas-station-in-use",
+    },
+    "dp_value": {
+        "type": "sensor",
+        "description": "Ciśnienie w komorze spalania",
+        "device_class": "SensorDeviceClass.PRESSURE",
+        "native_unit_of_measurement": "UnitOfPressure.PA",
+        "state_class": "SensorStateClass.MEASUREMENT",
+    },
+    "mpl_temp": {
+        "type": "sensor",
+        "description": "Temperatura palnika",
+        "device_class": "SensorDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
+        "state_class": "SensorStateClass.MEASUREMENT",
+    },
     "pl_status": {
         "type": "sensor",
         "description": "Status",
