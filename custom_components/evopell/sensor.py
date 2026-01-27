@@ -240,18 +240,19 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
             )
             return
 
-        status = self.hass.states.get(self._source_entity_id)
-        if status is not None and status.state == "2":
-            # Optionally “seed” one sample at startup if source exists and status is working
-            src = self.hass.states.get(self._source_entity_id)
-            v0 = parse_float(src.state if src else None)
-            if v0 is not None:
-                st = self._store.state
-                st.total += v0
-                st.count += 1
-                self._store.async_delay_save(30.0)
-                self.async_write_ha_state()
-                self._async_update_attrs()
+        if self._status_entity_id is not None:
+            status = self.hass.states.get(self._status_entity_id)
+            if status is not None and status.state == "2":
+                # Optionally “seed” one sample at startup if source exists and status is working
+                src = self.hass.states.get(self._status_entity_id)
+                v0 = parse_float(src.state if src else None)
+                if v0 is not None:
+                    st = self._store.state
+                    st.total += v0
+                    st.count += 1
+                    self._store.async_delay_save(30.0)
+                    self.async_write_ha_state()
+                    self._async_update_attrs()
 
         @callback
         def _on_change(event) -> None:
