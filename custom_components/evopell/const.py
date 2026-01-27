@@ -73,6 +73,7 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "device_class": "SensorDeviceClass.TEMPERATURE",
         "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
         "state_class": "SensorStateClass.MEASUREMENT",
+        "avg": "Średnia temperatura powrotu",
     },
     "temp_tank_lo": {
         "type": "sensor",
