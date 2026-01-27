@@ -50,6 +50,15 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "device_class": "SensorDeviceClass.TEMPERATURE",
         "native_unit_of_measurement": "UnitOfTemperature.CELSIUS",
         "state_class": "SensorStateClass.MEASUREMENT",
+        "avg": "Średnia temperatura spalin",
+    },
+    "avg_tsp_value": {
+        "type": "function_sensor",
+        "description": "Średnia temperatura spalin",
+        "source": "tsp_value",
+        "function": "average",
+        "reset": "true",
+        "contitions": {"pl_status": {"equal": "2"}},
     },
     "t1_value": {
         "type": "sensor",
@@ -126,6 +135,7 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "native_unit_of_measurement": "OWN.kg/h",
         "state_class": "SensorStateClass.MEASUREMENT",
         "icon": "mdi:gas-station-in-use",
+        "avg": "Średni przepływ pelletu",
     },
     "dp_value": {
         "type": "sensor",

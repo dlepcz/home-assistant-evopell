@@ -7,11 +7,15 @@ from homeassistant.components.number import NumberDeviceClass, NumberMode
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     PERCENTAGE,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
     UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,3 +101,30 @@ def epoch_to_datetime(value: str | float | None) -> datetime | None:
     except (TypeError, ValueError):
         return None
     return datetime.fromtimestamp(ts, tz=UTC)
+
+
+def parse_float(value: str | None) -> float | None:
+    """Parse string to float, returning None for invalid values."""
+    if not value or value in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    if v != v:  # NaN
+        return None
+    return v
+
+
+def find_sensor_entity_id(
+    hass: HomeAssistant,
+    *,
+    entry_id: str,
+    unique_id: str,
+) -> str | None:
+    """Find sensor entity_id by unique_id within a config entry."""
+    reg = er.async_get(hass)
+    for e in er.async_entries_for_config_entry(reg, entry_id):
+        if e.domain == "sensor" and e.unique_id == unique_id:
+            return e.entity_id
+    return None

@@ -423,6 +423,7 @@ class EvopellCoordinator(DataUpdateCoordinator[dict[str, str]]):
             update_interval=timedelta(seconds=scan_interval),
         )
         self.hub = hub
+        self.avg: dict[str, Any] = {}
 
     async def _async_setup(self) -> None:
         """Run one-time setup before the first refresh."""

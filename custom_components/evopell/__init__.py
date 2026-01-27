@@ -17,7 +17,7 @@ from .const import (
 )
 from .evopell import EvopellCoordinator, EvopellHub
 
-PLATFORMS = ["binary_sensor", "number", "select", "sensor"]
+PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor"]
 
 _LOGGER = logging.getLogger(__name__)
 
