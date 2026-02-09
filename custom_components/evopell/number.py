@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import EvopellCoordinator, EvopellEntity
 from .const import DOMAIN, EVOPELL_PARAM_MAP1
@@ -33,31 +34,40 @@ async def async_setup_entry(
 
     entities = []
     for tid, cfg in EVOPELL_PARAM_MAP1.items():
-        if cfg.get("type") != "number":
+        if cfg.get("type") != "number" and cfg.get("type") != "user_number":
             continue
 
         name = str(cfg.get("description", tid))
-
-        evopell.hub.param_map[tid] = name  # Register parameter in hub's param_map
         device_class = parse_number_device_class(cfg.get("device_class"))  # type: ignore[arg-type]
         unit = parse_sensor_unit(cfg.get("native_unit_of_measurement"))  # type: ignore[arg-type]
         icon = str(cfg.get("icon"))  # type: ignore[arg-type]
         mode = parse_number_mode(cfg.get("mode"))  # type: ignore[arg-type]
         step = to_float(str(cfg.get("step")))
-        entities.append(
-            EvopellNumber(
-                evopell,
-                NumberEntityDescription(
-                    key=tid,
-                    name=name,
-                    device_class=device_class,
-                    native_unit_of_measurement=unit,
-                    icon=icon,
-                    mode=mode,
-                    native_step=step,
-                ),
-            )
+
+        entityDescription = NumberEntityDescription(
+            key=tid,
+            name=name,
+            device_class=device_class,
+            native_unit_of_measurement=unit,
+            icon=icon,
+            mode=mode,
+            native_step=step,
         )
+        if cfg.get("type") == "number":
+            evopell.hub.param_map[tid] = name  # Register parameter in hub's param_map
+            entities.append(
+                EvopellNumber(
+                    evopell,
+                    entityDescription,
+                )
+            )
+        if cfg.get("type") == "user_number":
+            entities.append(
+                EvopellUserNumber(
+                    evopell,
+                    entityDescription,
+                )
+            )
 
     async_add_entities(entities)
 
@@ -139,4 +149,41 @@ class EvopellNumber(EvopellEntity, NumberEntity):
                     )
             else:
                 _LOGGER.error("Failed to write register %s: status %s", k.tid, k.status)
+        self.async_write_ha_state()
+
+
+class EvopellUserNumber(EvopellEntity, NumberEntity, RestoreEntity):
+    """User-defined number for Evopell integration."""
+
+    def __init__(
+        self,
+        coordinator: EvopellCoordinator,
+        description: NumberEntityDescription,
+    ) -> None:
+        """Inicjalizuje encję sensora Evopell."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_has_entity_name = True
+        self._attr_unique_id = f"{self.coordinator.name}_{description.key}"
+        self._value: float | None = None
+
+    @property
+    def native_value(self) -> float | None:
+        """Get native value."""
+        return self._value
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+        # przywróć po restarcie
+        last = await self.async_get_last_state()
+        if last and last.state not in ("unknown", "unavailable"):
+            try:
+                self._value = float(last.state)
+            except ValueError:
+                self._value = None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Change the selected value."""
+        self._value = float(value)
         self.async_write_ha_state()

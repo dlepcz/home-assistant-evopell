@@ -30,6 +30,8 @@ from .utils import (
 
 _LOGGER = logging.getLogger(__name__)
 
+EVOPELL_WORK_STATUS = "2"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -219,6 +221,8 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
             if st.total is not None
             else None,
             "count": st.count,
+            "min": st.min_value,
+            "max": st.max_value,
         }
         _LOGGER.debug(
             "EvopellAverageSensor attrs updated: total=%s count=%s mean=%s",
@@ -242,7 +246,7 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
 
         if self._status_entity_id is not None:
             status = self.hass.states.get(self._status_entity_id)
-            if status is not None and status.state == "2":
+            if status is not None and status.state == EVOPELL_WORK_STATUS:
                 # Optionally “seed” one sample at startup if source exists and status is working
                 src = self.hass.states.get(self._status_entity_id)
                 v0 = parse_float(src.state if src else None)
@@ -250,6 +254,10 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
                     st = self._store.state
                     st.total += v0
                     st.count += 1
+                    st.min_value = min(st.min_value, v0) if v0 > 1 else v0
+                    st.max_value = max(st.max_value, v0)
+                    if st.min_value <= 0:
+                        st.min_value = st.max_value
                     self._store.async_delay_save(30.0)
                     self.async_write_ha_state()
                     self._async_update_attrs()
@@ -260,7 +268,7 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
             if self._status_entity_id is None:
                 return
             status = self.hass.states.get(self._status_entity_id)
-            if status is None or status.state != "2":
+            if status is None or status.state != EVOPELL_WORK_STATUS:
                 _LOGGER.debug("Evopell wrong status: %s", status)
                 return
             new_state = event.data.get("new_state")
@@ -274,7 +282,10 @@ class EvopellAverageSensor(EvopellEntity, SensorEntity):
             st = self._store.state
             st.total += v
             st.count += 1
-
+            st.min_value = min(st.min_value, v) if v > 1 else v
+            st.max_value = max(st.max_value, v)
+            if st.min_value <= 0:
+                st.min_value = st.max_value
             self._dirty_samples += 1
             self.async_write_ha_state()
 

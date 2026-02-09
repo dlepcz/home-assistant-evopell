@@ -18,6 +18,8 @@ class AvgState:
 
     total: float = 0.0
     count: int = 0
+    min_value: float = 0.0
+    max_value: float = 0.0
 
     @property
     def mean(self) -> float | None:
@@ -41,6 +43,8 @@ class AvgStore:
         self.state = AvgState(
             total=float(data.get("total", 0.0)),
             count=int(data.get("count", 0)),
+            min_value=float(data.get("min_value", 0.0)),
+            max_value=float(data.get("max_value", 0.0)),
         )
         _LOGGER.debug(
             "AvgStore loaded state for %s: total=%s count=%s mean=%s",
