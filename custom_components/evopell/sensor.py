@@ -54,11 +54,19 @@ async def async_setup_entry(
         unit = parse_sensor_unit(cfg.get("native_unit_of_measurement"))  # type: ignore[arg-type]
         state_class = parse_sensor_state_class(cfg.get("state_class"))  # type: ignore[arg-type]
         icon = cfg.get("icon")  # type: ignore[arg-type]
+        divider = cfg.get("divider")  # type: ignore[arg-type]
 
         if icon:
             icon_str = str(icon)
         else:
             icon_str = None
+
+        if divider:
+            divider_int = int(str(divider))
+            if divider_int <= 1:
+                divider_int = None
+        else:
+            divider_int = None
 
         avg = cfg.get("avg")  # type: ignore[arg-type]
         if avg:
@@ -82,6 +90,7 @@ async def async_setup_entry(
                     icon=icon_str,
                     suggested_display_precision=display_precision,
                 ),
+                divider=divider_int,
             )
         )
         if avg_str is not None:
@@ -103,19 +112,26 @@ class EvopellSensor(EvopellEntity, SensorEntity):
     """Representuje sensor Evopell."""
 
     def __init__(
-        self, coordinator: EvopellCoordinator, description: SensorEntityDescription
+        self,
+        coordinator: EvopellCoordinator,
+        description: SensorEntityDescription,
+        divider: int | None = None,
     ) -> None:
         """Inicjalizuje encję sensora Evopell."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{self.coordinator.name}_{description.key}"
+        if divider is None or divider <= 1:
+            self._divider = None
+        else:
+            self._divider = divider
 
     @property
     def native_value(self):
         """Zwraca wartość sensora."""
         tid = self.entity_description.key
-        _LOGGER.debug("Native value for senosr %s", tid)
+        _LOGGER.debug("Native value for sensor %s", tid)
         result = None
         if tid in self.coordinator.hub.registers_data:
             register = self.coordinator.hub.registers_data[tid]
@@ -126,6 +142,9 @@ class EvopellSensor(EvopellEntity, SensorEntity):
 
         if result is not None and self.entity_description.device_class == "timestamp":
             result = epoch_to_datetime(result)
+
+        if result is not None and self._divider is not None:
+            result = round(float(str(result)) / self._divider, 2)
 
         return result
 
