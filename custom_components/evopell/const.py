@@ -339,6 +339,22 @@ EVOPELL_PARAM_MAP1: dict[str, dict[str, str | dict[str, dict[str, str]]]] = {
         "icon": "mdi:thermometer",
         "step": "0.1",
     },
+    "pl_dm_max": {
+        "type": "number",
+        "description": "Dmuchawa dla mocy maksymalnej",
+        "native_unit_of_measurement": "UnitOfTemperature.PERCENTAGE",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:wind-power",
+        "step": "1",
+    },
+    "pl_dm_min": {
+        "type": "number",
+        "description": "Dmuchawa dla mocy mainimalnej",
+        "native_unit_of_measurement": "UnitOfTemperature.PERCENTAGE",
+        "mode": "NumberMode.BOX",
+        "icon": "mdi:wind-power",
+        "step": "1",
+    },
 }
 
 EVOPELL_PARAM_MAP = {
@@ -548,8 +564,8 @@ EVOPELL_PARAM_MAP = {
     "pl_kot_pmax": "",
     "pl_fuel_max": "",
     "pl_fuel_min": "",
-    "pl_dm_max": "",
-    "pl_dm_min": "",
+    "pl_dm_max": "Dmuchawa dla mocy maksymalnej",
+    "pl_dm_min": "Dmuchawa dla mocy mainimalnej",
     "mpl_feed": "",
     "mpl_heat": "",
     "mpl_clean": "",
